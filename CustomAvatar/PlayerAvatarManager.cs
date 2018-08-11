@@ -145,18 +145,81 @@ namespace CustomAvatar
 			ResizePlayerAvatar();
 		}
 
+		protected static string PlayerHandToHandKey = "AvatarAutoFitting.PlayerHandToHand";
+		protected static string PlayerViewPortYKey = "AvatarAutoFitting.PlayerViewPortY";
+
 		private void ResizePlayerAvatar()
 		{
 			if (_currentSpawnedPlayerAvatar?.GameObject == null) return;
 			if (!_currentSpawnedPlayerAvatar.CustomAvatar.AllowHeightCalibration) return;
 
-			var playerHeight = BeatSaberUtil.GetPlayerHeight();
-			if (playerHeight == _prevPlayerHeight) return;
-			_prevPlayerHeight = playerHeight;
-			_currentSpawnedPlayerAvatar.GameObject.transform.localScale =
-				_startAvatarLocalScale * (playerHeight / _currentSpawnedPlayerAvatar.CustomAvatar.Height);
-			Plugin.Log("Resizing avatar to " + (playerHeight / _currentSpawnedPlayerAvatar.CustomAvatar.Height) +
-			                  "x scale");
+			float PlayerHandToHand = PlayerPrefs.GetFloat(PlayerHandToHandKey, 1.5f);
+			float PlayerViewPointY = PlayerPrefs.GetFloat(PlayerViewPortYKey, 1.5f);
+
+			var avatarHandToHand = AvatarMeasurement.MeasureHandToHand(_currentSpawnedPlayerAvatar.GameObject) ?? PlayerHandToHand;
+			Plugin.Log("HandToHand: " + avatarHandToHand);
+
+			var avatarViewPointY = _currentSpawnedPlayerAvatar.CustomAvatar.ViewPoint?.position.y ?? PlayerViewPointY;
+
+			// fbx root gameobject
+			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
+			if (animator == null) { Plugin.Log("Animator not found"); return; }
+
+			// scale
+			var scale = PlayerHandToHand / avatarHandToHand;
+			_currentSpawnedPlayerAvatar.GameObject.transform.localScale = _startAvatarLocalScale * scale;
+
+			// translate root for floor level
+			const float FloorLevelOffset = 0.04f; // a heuristic value from testing on oculus rift
+			var offset = (PlayerViewPointY - (avatarViewPointY * scale)) + FloorLevelOffset;
+			animator.transform.Translate(Vector3.up * offset);
+
+			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
+		}
+
+		public void MeasurePlayerSize()
+		{
+			var active = SceneManager.GetActiveScene().GetRootGameObjects()[0].GetComponent<PlayerSizeScanner>();
+			if (active != null)
+			{
+				GameObject.Destroy(active);
+			}
+			SceneManager.GetActiveScene().GetRootGameObjects()[0].AddComponent<PlayerSizeScanner>();
+		}
+
+		private class PlayerSizeScanner : MonoBehaviour
+		{
+			private PlayerAvatarInput playerInput = new PlayerAvatarInput();
+			private const float initialValue = 0.5f;
+			private float maxViewPointY = initialValue;
+			private float maxHandToHandLength = initialValue;
+			private int scanCount = 0;
+
+			void Scan()
+			{
+				maxViewPointY = Math.Max(maxViewPointY, playerInput.HeadPosRot.Position.y);
+				maxHandToHandLength = Math.Max(maxHandToHandLength, Vector3.Distance(playerInput.LeftPosRot.Position, playerInput.RightPosRot.Position));
+				if (scanCount++ > 15)
+				{
+					Plugin.Log("Scanning finished. viewporty: " + maxViewPointY + " handtohand: " + maxHandToHandLength);
+					if (maxViewPointY > initialValue && maxHandToHandLength > initialValue)
+					{
+						PlayerPrefs.SetFloat(PlayerViewPortYKey, maxViewPointY);
+						PlayerPrefs.SetFloat(PlayerHandToHandKey, maxHandToHandLength);
+						PlayerPrefs.Save();
+					}
+					Destroy(this);
+				}
+			}
+			void Start()
+			{
+				Plugin.Log("PlayerSizeScanner starts scannig");
+				InvokeRepeating("Scan", 1.0f, 0.2f);
+			}
+			void OnDestroy()
+			{
+				CancelInvoke();
+			}
 		}
 	}
 }

@@ -23,5 +23,27 @@ namespace CustomAvatar
 			
 			return Mathf.Clamp(height, MinHeight, MaxHeight);
 		}
+
+		public static float? MeasureHandToHand(GameObject avatarGameObject)
+		{
+			var animator = avatarGameObject.GetComponentInChildren<Animator>();
+			if (animator == null || animator.avatar == null || !animator.isHuman || !animator.enabled)
+			{
+				Plugin.Log("animator for human not found");
+				return null;
+			}
+
+			var leftShoulder = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
+			var rightShoulder = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
+			var leftHand = Vector3.Lerp(
+				animator.GetBoneTransform(HumanBodyBones.LeftHand).position,
+				animator.GetBoneTransform(HumanBodyBones.LeftMiddleProximal).position, 0.8f);
+			var rightHand = Vector3.Lerp(
+				animator.GetBoneTransform(HumanBodyBones.RightHand).position,
+				animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal).position, 0.8f);
+			return Vector3.Distance(leftHand, leftShoulder)
+				+ Vector3.Distance(leftShoulder, rightShoulder)
+				+ Vector3.Distance(rightHand, rightShoulder);
+		}
 	}
 }

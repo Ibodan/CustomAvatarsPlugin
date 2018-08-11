@@ -131,6 +131,10 @@ namespace CustomAvatar
 			{
 				FirstPersonEnabled = !FirstPersonEnabled;
 			}
+			else if (Input.GetKeyDown(KeyCode.End))
+			{
+				PlayerAvatarManager.MeasurePlayerSize();
+			}
 		}
 
 		private static void SetCameraCullingMask()
