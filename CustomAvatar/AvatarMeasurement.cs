@@ -24,7 +24,7 @@ namespace CustomAvatar
 			return Mathf.Clamp(height, MinHeight, MaxHeight);
 		}
 
-		public static float? MeasureHandToHand(GameObject avatarGameObject)
+		public static float? MeasureArmLength(GameObject avatarGameObject)
 		{
 			var animator = avatarGameObject.GetComponentInChildren<Animator>();
 			if (animator == null || animator.avatar == null || !animator.isHuman || !animator.enabled)

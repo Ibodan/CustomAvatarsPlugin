@@ -133,7 +133,15 @@ namespace CustomAvatar
 			}
 			else if (Input.GetKeyDown(KeyCode.End))
 			{
-				PlayerAvatarManager.MeasurePlayerSize();
+				PlayerAvatarManager.MeasurePlayerViewPoint();
+			}
+			else if (Input.GetKeyDown(KeyCode.Period))
+			{
+				PlayerAvatarManager.IncrementPlayerArmLength(1);
+			}
+			else if (Input.GetKeyDown(KeyCode.Comma))
+			{
+				PlayerAvatarManager.IncrementPlayerArmLength(-1);
 			}
 		}
 

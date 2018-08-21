@@ -12,6 +12,9 @@ namespace CustomAvatar
 		private SpawnedAvatar _currentSpawnedPlayerAvatar;
 		private float _prevPlayerHeight = MainSettingsModel.kDefaultPlayerHeight;
 		private Vector3 _startAvatarLocalScale = Vector3.one;
+		private float _currentAvatarOffsetY = 0f;
+		private float? _currentAvatarArmLength = null;
+		private float _currentPlatformOffsetY = 0f;
 
 		public event Action<CustomAvatar> AvatarChanged;
 
@@ -129,6 +132,8 @@ namespace CustomAvatar
 			}
 
 			_startAvatarLocalScale = _currentSpawnedPlayerAvatar.GameObject.transform.localScale;
+			_currentAvatarOffsetY = 0f;
+			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
 			ResizePlayerAvatar();
 		}
@@ -145,81 +150,65 @@ namespace CustomAvatar
 			ResizePlayerAvatar();
 		}
 
-		protected static string PlayerHandToHandKey = "AvatarAutoFitting.PlayerHandToHand";
-		protected static string PlayerViewPortYKey = "AvatarAutoFitting.PlayerViewPortY";
+		private const string PlayerArmLengthKey = "AvatarAutoFitting.PlayerArmLength";
+		private const string PlayerViewPointYKey = "AvatarAutoFitting.PlayerViewPointY";
+		private float PlayerDefaultViewPortY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
+		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.92f;
 
 		private void ResizePlayerAvatar()
 		{
 			if (_currentSpawnedPlayerAvatar?.GameObject == null) return;
 			if (!_currentSpawnedPlayerAvatar.CustomAvatar.AllowHeightCalibration) return;
 
-			float PlayerHandToHand = PlayerPrefs.GetFloat(PlayerHandToHandKey, 1.5f);
-			float PlayerViewPointY = PlayerPrefs.GetFloat(PlayerViewPortYKey, 1.5f);
+			float playerArmLength = PlayerPrefs.GetFloat(PlayerArmLengthKey, PlayerDefaultArmLength);
+			float playerViewPointY = PlayerPrefs.GetFloat(PlayerViewPointYKey, PlayerDefaultViewPortY);
 
-			var avatarHandToHand = AvatarMeasurement.MeasureHandToHand(_currentSpawnedPlayerAvatar.GameObject) ?? PlayerHandToHand;
-			Plugin.Log("HandToHand: " + avatarHandToHand);
+			_currentAvatarArmLength = _currentAvatarArmLength ?? AvatarMeasurement.MeasureArmLength(_currentSpawnedPlayerAvatar.GameObject);
+			var avatarArmLength =  _currentAvatarArmLength ?? playerArmLength;
+			Plugin.Log("Avatar Arm Length: " + avatarArmLength);
 
-			var avatarViewPointY = _currentSpawnedPlayerAvatar.CustomAvatar.ViewPoint?.position.y ?? PlayerViewPointY;
+			var avatarViewPointY = _currentSpawnedPlayerAvatar.CustomAvatar.ViewPoint?.position.y ?? playerViewPointY;
 
 			// fbx root gameobject
 			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
 			if (animator == null) { Plugin.Log("Animator not found"); return; }
 
 			// scale
-			var scale = PlayerHandToHand / avatarHandToHand;
+			var scale = playerArmLength / avatarArmLength;
 			_currentSpawnedPlayerAvatar.GameObject.transform.localScale = _startAvatarLocalScale * scale;
 
 			// translate root for floor level
 			const float FloorLevelOffset = 0.04f; // a heuristic value from testing on oculus rift
-			var offset = (PlayerViewPointY - (avatarViewPointY * scale)) + FloorLevelOffset;
-			animator.transform.Translate(Vector3.up * offset);
+			var offset = (playerViewPointY - (avatarViewPointY * scale)) + FloorLevelOffset;
+			var avatarTranslate = Vector3.up * (offset - _currentAvatarOffsetY);
+			_currentAvatarOffsetY = offset;
+
+			animator.transform.Translate(avatarTranslate);
+
+			// translate platform
+			var platformTranslate = Vector3.up * (offset - _currentPlatformOffsetY);
+			GameObject.Find("Platform Loader")?.transform.Translate(platformTranslate);
+			_currentPlatformOffsetY = offset;
 
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
 		}
 
-		public void MeasurePlayerSize()
+		public void MeasurePlayerViewPoint()
 		{
-			var active = SceneManager.GetActiveScene().GetRootGameObjects()[0].GetComponent<PlayerSizeScanner>();
-			if (active != null)
-			{
-				GameObject.Destroy(active);
-			}
-			SceneManager.GetActiveScene().GetRootGameObjects()[0].AddComponent<PlayerSizeScanner>();
+			var viewPointY = _playerAvatarInput.HeadPosRot.Position.y;
+			Plugin.Log("Player ViewPointY: " + viewPointY);
+			PlayerPrefs.SetFloat(PlayerViewPointYKey, viewPointY);
+			PlayerPrefs.Save();
+			ResizePlayerAvatar();
 		}
 
-		private class PlayerSizeScanner : MonoBehaviour
+		public void IncrementPlayerArmLength(int step)
 		{
-			private PlayerAvatarInput playerInput = new PlayerAvatarInput();
-			private const float initialValue = 0.5f;
-			private float maxViewPointY = initialValue;
-			private float maxHandToHandLength = initialValue;
-			private int scanCount = 0;
-
-			void Scan()
-			{
-				maxViewPointY = Math.Max(maxViewPointY, playerInput.HeadPosRot.Position.y);
-				maxHandToHandLength = Math.Max(maxHandToHandLength, Vector3.Distance(playerInput.LeftPosRot.Position, playerInput.RightPosRot.Position));
-				if (scanCount++ > 15)
-				{
-					Plugin.Log("Scanning finished. viewporty: " + maxViewPointY + " handtohand: " + maxHandToHandLength);
-					if (maxViewPointY > initialValue && maxHandToHandLength > initialValue)
-					{
-						PlayerPrefs.SetFloat(PlayerViewPortYKey, maxViewPointY);
-						PlayerPrefs.SetFloat(PlayerHandToHandKey, maxHandToHandLength);
-						PlayerPrefs.Save();
-					}
-					Destroy(this);
-				}
-			}
-			void Start()
-			{
-				Plugin.Log("PlayerSizeScanner starts scannig");
-				InvokeRepeating("Scan", 1.0f, 0.2f);
-			}
-			void OnDestroy()
-			{
-				CancelInvoke();
-			}
+			var v = PlayerPrefs.GetFloat(PlayerArmLengthKey, PlayerDefaultArmLength);
+			v += 0.05f * step;
+			PlayerPrefs.SetFloat(PlayerArmLengthKey, v);
+			PlayerPrefs.Save();
+			ResizePlayerAvatar();
 		}
 	}
 }
