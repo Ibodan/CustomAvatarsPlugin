@@ -136,6 +136,7 @@ namespace CustomAvatar
 			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
 			ResizePlayerAvatar();
+			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
 
 		private void OnFirstPersonEnabledChanged(bool firstPersonEnabled)
