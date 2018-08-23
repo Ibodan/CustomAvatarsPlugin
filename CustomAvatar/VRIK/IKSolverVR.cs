@@ -1525,6 +1525,7 @@ namespace AvatarScriptPack
 				float num = 0f;
 				if (this.bendGoal != null && this.bendGoalWeight > 0f)
 				{
+					this.bendNormal = Vector3.Cross(this.bendGoal.position - this.thigh.solverPosition, this.foot.solverPosition - this.thigh.solverPosition);
 					Vector3 point = Vector3.Cross(this.bendGoal.position - this.thigh.solverPosition, this.foot.solverPosition - this.thigh.solverPosition);
 					Quaternion rotation = Quaternion.LookRotation(this.bendNormal, this.thigh.solverPosition - this.foot.solverPosition);
 					Vector3 vector = Quaternion.Inverse(rotation) * point;

@@ -136,6 +136,7 @@ namespace CustomAvatar
 			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
 			ResizePlayerAvatar();
+			FixAvatar();
 			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
 
@@ -194,6 +195,12 @@ namespace CustomAvatar
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
 		}
 
+		private void FixAvatar()
+		{
+			// inject fixer
+			_currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<AvatarScriptPack.VRIK>()?.gameObject.AddComponent<IKSolverFixer>();
+		}
+
 		public void MeasurePlayerViewPoint()
 		{
 			var viewPointY = _playerAvatarInput.HeadPosRot.Position.y;
@@ -210,6 +217,42 @@ namespace CustomAvatar
 			PlayerPrefs.SetFloat(PlayerArmLengthKey, v);
 			PlayerPrefs.Save();
 			ResizePlayerAvatar();
+		}
+
+		private class IKSolverFixer : MonoBehaviour
+		{
+			private void DoFix()
+			{
+				var vrik = GetComponent<AvatarScriptPack.VRIK>();
+				// force plant feet feature disabled and you can jump
+				vrik.solver.plantFeet = false;
+				var animator = GetComponentInChildren<Animator>();
+				if (animator != null && animator.avatar && animator.isHuman)
+				{
+					void fixLegBend(HumanBodyBones hipBoneName, HumanBodyBones legBoneName, AvatarScriptPack.IKSolverVR.Leg legSolver)
+					{
+						var hip = animator.GetBoneTransform(hipBoneName);
+						var leg = animator.GetBoneTransform(legBoneName);
+						if (hip != null && leg != null)
+						{
+							var bendGoal = new GameObject();
+							bendGoal.transform.SetParent(hip);
+							bendGoal.transform.localPosition = Vector3.forward + (leg.position - hip.position);
+							legSolver.bendGoal = bendGoal.transform;
+							legSolver.bendGoalWeight = 1.0f;
+							legSolver.swivelOffset = 0f;
+						}
+					}
+					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.LeftUpperLeg, vrik.solver.leftLeg);
+					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.RightUpperLeg, vrik.solver.rightLeg);
+				}
+			}
+
+			public void Start()
+			{
+				// override values after the start of IKManagerAdvanced
+				Invoke("DoFix", 0.1f);
+			}
 		}
 	}
 }
