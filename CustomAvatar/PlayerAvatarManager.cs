@@ -135,8 +135,9 @@ namespace CustomAvatar
 			_currentAvatarOffsetY = 0f;
 			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
-			ResizePlayerAvatar();
 			FixAvatar();
+			ResizePlayerAvatar();
+
 			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
 
@@ -198,8 +199,52 @@ namespace CustomAvatar
 
 		private void FixAvatar()
 		{
-			// inject fixer
-			_currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<AvatarScriptPack.VRIK>()?.gameObject.AddComponent<IKSolverFixer>();
+			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
+			if (animator != null && animator.avatar && animator.isHuman)
+			{
+				// grip fix
+				void fixGrip(HumanBodyBones littleFingerBoneName, HumanBodyBones indexFingerBoneName, HumanBodyBones wristBoneName, HumanBodyBones elbowBoneName,
+					Transform handObject, Quaternion fixRotation, Vector3 fixTargetOffset, Vector3 baseArmDirection)
+				{
+					if (handObject == null) return;
+					var handTarget = handObject.GetChild(0);
+					if (handTarget == null) return;
+
+					var littleFinger = animator.GetBoneTransform(littleFingerBoneName);
+					var indexFinger = animator.GetBoneTransform(indexFingerBoneName);
+					var wrist = animator.GetBoneTransform(wristBoneName);
+					var elbow = animator.GetBoneTransform(elbowBoneName);
+
+					var universalRotation = Quaternion.LookRotation(indexFinger.position - littleFinger.position, wrist.position - elbow.position);
+					var fingerThickness = (littleFinger.position - indexFinger.position).magnitude;
+					fixTargetOffset.Scale(new Vector3(0.05f, fingerThickness, 0.05f));
+					var universalPosition = indexFinger.position;
+					var rotationToPose = Quaternion.FromToRotation(baseArmDirection, wrist.position - elbow.position);
+
+					handTarget.parent = null;
+					handObject.localPosition = universalPosition + (rotationToPose * fixTargetOffset);
+					handObject.localRotation = universalRotation * fixRotation;
+					handTarget.parent = handObject;
+
+					handTarget.rotation = wrist.rotation;
+					handTarget.position = wrist.position;
+
+					Plugin.Log("Grip fix applied. " + universalPosition);
+				}
+				var targetOffset = new Vector3(-0.37f, -0.34f, 0.85f);
+				var rotation = new Quaternion(0.005924877f, 0.294924f, 0.9530304f, -0.06868639f);
+				fixGrip(HumanBodyBones.LeftLittleProximal, HumanBodyBones.LeftIndexProximal, HumanBodyBones.LeftHand, HumanBodyBones.LeftLowerArm,
+					_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"),
+					rotation, targetOffset, new Vector3(-1f, 0f, 0f));
+				rotation.x *= -1f;
+				rotation.w *= -1f;
+				targetOffset.x *= -1f;
+				fixGrip(HumanBodyBones.RightLittleProximal, HumanBodyBones.RightIndexProximal, HumanBodyBones.RightHand, HumanBodyBones.RightLowerArm,
+					_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"),
+					rotation, targetOffset, new Vector3(1f, 0f, 0f));
+			}
+			// inject late fixer
+			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverFixer>();
 		}
 
 		public void MeasurePlayerViewPoint()
@@ -222,14 +267,22 @@ namespace CustomAvatar
 
 		private class IKSolverFixer : MonoBehaviour
 		{
-			private void DoFix()
+			private void LateFix()
 			{
-				var vrik = GetComponent<AvatarScriptPack.VRIK>();
+				var vrik = GetComponentInChildren<AvatarScriptPack.VRIK>();
+				if (vrik == null) return;
 				// force plant feet feature disabled and you can jump
 				vrik.solver.plantFeet = false;
+				// other paternalistic assignings
+				vrik.solver.spine.neckStiffness = 0f;
+				vrik.solver.spine.headClampWeight = 0.4f;
+				vrik.solver.spine.bodyPosStiffness = 0.3f;
+				vrik.solver.spine.bodyRotStiffness = 0f;
+				vrik.solver.spine.maintainPelvisPosition = 0f;
 				var animator = GetComponentInChildren<Animator>();
 				if (animator != null && animator.avatar && animator.isHuman)
 				{
+					// leg bending fix : insert a bend goal 
 					void fixLegBend(HumanBodyBones hipBoneName, HumanBodyBones legBoneName, AvatarScriptPack.IKSolverVR.Leg legSolver)
 					{
 						var hip = animator.GetBoneTransform(hipBoneName);
@@ -246,14 +299,17 @@ namespace CustomAvatar
 					}
 					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.LeftUpperLeg, vrik.solver.leftLeg);
 					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.RightUpperLeg, vrik.solver.rightLeg);
+
+					Plugin.Log("Leg bending fix applied.");
 				}
 			}
 
 			public void Start()
 			{
 				// override values after the start of IKManagerAdvanced
-				Invoke("DoFix", 0.1f);
+				Invoke("LateFix", 0.1f);
 			}
 		}
 	}
 }
+ 
