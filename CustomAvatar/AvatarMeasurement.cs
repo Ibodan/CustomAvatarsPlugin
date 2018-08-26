@@ -35,8 +35,9 @@ namespace CustomAvatar
 
 			var leftShoulder = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
 			var rightShoulder = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
+			var leftElbow = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).position;
 			var leftHand = animator.GetBoneTransform(HumanBodyBones.LeftHand).position;
-			return Vector3.Distance(leftHand, leftShoulder) * 2.0f + Vector3.Distance(leftShoulder, rightShoulder);
+			return (Vector3.Distance(leftElbow, leftShoulder) + Vector3.Distance(leftHand, leftElbow)) * 2.0f + Vector3.Distance(leftShoulder, rightShoulder);
 		}
 	}
 }

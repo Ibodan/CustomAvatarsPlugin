@@ -215,23 +215,23 @@ namespace CustomAvatar
 					var wrist = animator.GetBoneTransform(wristBoneName);
 					var elbow = animator.GetBoneTransform(elbowBoneName);
 
-					var universalRotation = Quaternion.LookRotation(indexFinger.position - littleFinger.position, wrist.position - elbow.position);
+					var anatomicBaseRotation = Quaternion.LookRotation(indexFinger.position - littleFinger.position, wrist.position - elbow.position);
 					var fingerThickness = (littleFinger.position - indexFinger.position).magnitude;
 					fixTargetOffset.Scale(new Vector3(0.05f, fingerThickness, 0.05f));
-					var universalPosition = indexFinger.position;
+					var anatomicBasePosition = indexFinger.position;
 					var rotationToPose = Quaternion.FromToRotation(baseArmDirection, wrist.position - elbow.position);
 
 					handTarget.parent = null;
-					handObject.localPosition = universalPosition + (rotationToPose * fixTargetOffset);
-					handObject.localRotation = universalRotation * fixRotation;
+					handObject.position = anatomicBasePosition + (rotationToPose * fixTargetOffset);
+					handObject.localRotation = anatomicBaseRotation * fixRotation;
 					handTarget.parent = handObject;
 
 					handTarget.rotation = wrist.rotation;
 					handTarget.position = wrist.position;
 
-					Plugin.Log("Grip fix applied. " + universalPosition);
+					Plugin.Log("Grip fix applied. " + anatomicBasePosition);
 				}
-				var targetOffset = new Vector3(-0.37f, -0.34f, 0.85f);
+				var targetOffset = new Vector3(-0.52f, -0.34f, 0.99f);
 				var rotation = new Quaternion(0.005924877f, 0.294924f, 0.9530304f, -0.06868639f);
 				fixGrip(HumanBodyBones.LeftLittleProximal, HumanBodyBones.LeftIndexProximal, HumanBodyBones.LeftHand, HumanBodyBones.LeftLowerArm,
 					_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"),
