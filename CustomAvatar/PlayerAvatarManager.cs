@@ -12,9 +12,9 @@ namespace CustomAvatar
 		private SpawnedAvatar _currentSpawnedPlayerAvatar;
 		private float _prevPlayerHeight = MainSettingsModel.kDefaultPlayerHeight;
 		private Vector3 _startAvatarLocalScale = Vector3.one;
-		private float _currentAvatarOffsetY = 0f;
 		private float? _currentAvatarArmLength = null;
-		private float _currentPlatformOffsetY = 0f;
+		private Vector3? _startPlatformPosition = null;
+		private float? _startAvatarPositionY = null;
 
 		public event Action<CustomAvatar> AvatarChanged;
 
@@ -132,7 +132,7 @@ namespace CustomAvatar
 			}
 
 			_startAvatarLocalScale = _currentSpawnedPlayerAvatar.GameObject.transform.localScale;
-			_currentAvatarOffsetY = 0f;
+			_startAvatarPositionY = null;
 			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
 			FixAvatar();
@@ -156,7 +156,7 @@ namespace CustomAvatar
 
 		private const string PlayerArmLengthKey = "AvatarAutoFitting.PlayerArmLength";
 		private const string PlayerViewPointYKey = "AvatarAutoFitting.PlayerViewPointY";
-		private float PlayerDefaultViewPortY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
+		private float PlayerDefaultViewPointY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
 		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.92f;
 
 		private void ResizePlayerAvatar()
@@ -165,7 +165,7 @@ namespace CustomAvatar
 			if (!_currentSpawnedPlayerAvatar.CustomAvatar.AllowHeightCalibration) return;
 
 			float playerArmLength = PlayerPrefs.GetFloat(PlayerArmLengthKey, PlayerDefaultArmLength);
-			float playerViewPointY = PlayerPrefs.GetFloat(PlayerViewPointYKey, PlayerDefaultViewPortY);
+			float playerViewPointY = PlayerPrefs.GetFloat(PlayerViewPointYKey, PlayerDefaultViewPointY);
 
 			_currentAvatarArmLength = _currentAvatarArmLength ?? AvatarMeasurement.MeasureArmLength(_currentSpawnedPlayerAvatar.GameObject);
 			var avatarArmLength =  _currentAvatarArmLength ?? playerArmLength;
@@ -182,17 +182,19 @@ namespace CustomAvatar
 			_currentSpawnedPlayerAvatar.GameObject.transform.localScale = _startAvatarLocalScale * scale;
 
 			// translate root for floor level
+			_startAvatarPositionY = _startAvatarPositionY ?? animator.transform.position.y;
 			const float FloorLevelOffset = 0.04f; // a heuristic value from testing on oculus rift
 			var offset = (playerViewPointY - (avatarViewPointY * scale)) + FloorLevelOffset;
-			var avatarTranslate = Vector3.up * (offset - _currentAvatarOffsetY);
-			_currentAvatarOffsetY = offset;
-
-			animator.transform.Translate(avatarTranslate);
+			animator.transform.position = new Vector3(animator.transform.position.x, offset + _startAvatarPositionY ?? 0, animator.transform.position.z);
 
 			// translate platform
-			var platformTranslate = Vector3.up * (offset - _currentPlatformOffsetY);
-			GameObject.Find("Platform Loader")?.transform.Translate(platformTranslate);
-			_currentPlatformOffsetY = offset;
+			var customFloor = GameObject.Find("Platform Loader");
+			if (customFloor != null)
+			{
+				_startPlatformPosition = _startPlatformPosition ?? customFloor.transform.position;
+				customFloor.transform.position = (Vector3.up * offset) + _startPlatformPosition ?? Vector3.zero;
+				Plugin.Log("Custom Platform moved to: " + customFloor.transform.position.y);				
+			}
 
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
 		}
