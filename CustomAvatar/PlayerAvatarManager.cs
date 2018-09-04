@@ -201,50 +201,6 @@ namespace CustomAvatar
 
 		private void FixAvatar()
 		{
-			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
-			if (animator != null && animator.avatar && animator.isHuman)
-			{
-				// grip fix
-				void fixGrip(HumanBodyBones littleFingerBoneName, HumanBodyBones indexFingerBoneName, HumanBodyBones wristBoneName, HumanBodyBones elbowBoneName,
-					Transform handObject, Quaternion fixRotation, Vector3 fixTargetOffset, Vector3 baseArmDirection)
-				{
-					if (handObject == null) return;
-					var handTarget = handObject.GetChild(0);
-					if (handTarget == null) return;
-
-					var littleFinger = animator.GetBoneTransform(littleFingerBoneName);
-					var indexFinger = animator.GetBoneTransform(indexFingerBoneName);
-					var wrist = animator.GetBoneTransform(wristBoneName);
-					var elbow = animator.GetBoneTransform(elbowBoneName);
-
-					var anatomicBaseRotation = Quaternion.LookRotation(indexFinger.position - littleFinger.position, wrist.position - elbow.position);
-					var fingerThickness = (littleFinger.position - indexFinger.position).magnitude;
-					fixTargetOffset.Scale(new Vector3(0.05f, fingerThickness, 0.05f));
-					var anatomicBasePosition = indexFinger.position;
-					var rotationToPose = Quaternion.FromToRotation(baseArmDirection, wrist.position - elbow.position);
-
-					handTarget.parent = null;
-					handObject.position = anatomicBasePosition + (rotationToPose * fixTargetOffset);
-					handObject.localRotation = anatomicBaseRotation * fixRotation;
-					handTarget.parent = handObject;
-
-					handTarget.rotation = wrist.rotation;
-					handTarget.position = wrist.position;
-
-					Plugin.Log("Grip fix applied. " + anatomicBasePosition);
-				}
-				var targetOffset = new Vector3(-0.52f, -0.34f, 0.99f);
-				var rotation = new Quaternion(0.005924877f, 0.294924f, 0.9530304f, -0.06868639f);
-				fixGrip(HumanBodyBones.LeftLittleProximal, HumanBodyBones.LeftIndexProximal, HumanBodyBones.LeftHand, HumanBodyBones.LeftLowerArm,
-					_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"),
-					rotation, targetOffset, new Vector3(-1f, 0f, 0f));
-				rotation.x *= -1f;
-				rotation.w *= -1f;
-				targetOffset.x *= -1f;
-				fixGrip(HumanBodyBones.RightLittleProximal, HumanBodyBones.RightIndexProximal, HumanBodyBones.RightHand, HumanBodyBones.RightLowerArm,
-					_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"),
-					rotation, targetOffset, new Vector3(1f, 0f, 0f));
-			}
 			// inject late fixer
 			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverFixer>();
 		}
