@@ -169,7 +169,7 @@ namespace CustomAvatar
 			float playerViewPointY = PlayerPrefs.GetFloat(PlayerViewPointYKey, PlayerDefaultViewPointY);
 
 			_currentAvatarArmLength = _currentAvatarArmLength ?? AvatarMeasurement.MeasureArmLength(_currentSpawnedPlayerAvatar.GameObject);
-			var avatarArmLength =  _currentAvatarArmLength ?? playerArmLength;
+			var avatarArmLength = _currentAvatarArmLength ?? playerArmLength;
 			Plugin.Log("Avatar Arm Length: " + avatarArmLength);
 
 			var avatarViewPointY = _currentSpawnedPlayerAvatar.CustomAvatar.ViewPoint?.position.y ?? playerViewPointY;
@@ -193,8 +193,8 @@ namespace CustomAvatar
 			if (customFloor != null)
 			{
 				_startPlatformPosition = _startPlatformPosition ?? customFloor.transform.position;
-				customFloor.transform.position = (Vector3.up * offset) + _startPlatformPosition ?? Vector3.zero;
-				Plugin.Log("Custom Platform moved to: " + customFloor.transform.position.y);				
+				var mender = customFloor.AddComponent<FloorLevelMender>();
+				mender.destination = (Vector3.up * offset) + _startPlatformPosition ?? Vector3.zero;
 			}
 
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
@@ -203,7 +203,7 @@ namespace CustomAvatar
 		private void FixAvatar()
 		{
 			// inject late fixer
-			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverFixer>();
+			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverMender>();
 		}
 
 		public void MeasurePlayerViewPoint()
@@ -224,7 +224,24 @@ namespace CustomAvatar
 			ResizePlayerAvatar();
 		}
 
-		private class IKSolverFixer : MonoBehaviour
+		private class FloorLevelMender : MonoBehaviour
+		{
+			public Vector3 destination;
+
+			private void LateFix()
+			{
+				transform.position = destination;
+				Plugin.Log("Custom Platform moved to: " + transform.position.y);
+				Destroy(this);
+			}
+
+			private void Start()
+			{
+				Invoke("LateFix", 0.1f);
+			}
+		}
+
+		private class IKSolverMender : MonoBehaviour
 		{
 			private void LateFix()
 			{
@@ -263,7 +280,7 @@ namespace CustomAvatar
 				}
 			}
 
-			public void Start()
+			private void Start()
 			{
 				// override values after the start of IKManagerAdvanced
 				Invoke("LateFix", 0.1f);
@@ -271,4 +288,3 @@ namespace CustomAvatar
 		}
 	}
 }
- 
