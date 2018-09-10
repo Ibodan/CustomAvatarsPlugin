@@ -157,10 +157,11 @@ namespace CustomAvatar
 
 		private const string PlayerArmLengthKey = "AvatarAutoFitting.PlayerArmLength";
 		private const string PlayerViewPointYKey = "AvatarAutoFitting.PlayerViewPointY";
+		private const string PlayerGripAngleKey = "AvatarAutoFitting.PlayerGripAngle";
 		private float PlayerDefaultViewPointY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
 		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.92f;
 
-		private void ResizePlayerAvatar()
+		private void ResizePlayerAvatar(float gripRotDelta = 0.0f)
 		{
 			if (_currentSpawnedPlayerAvatar?.GameObject == null) return;
 			if (!_currentSpawnedPlayerAvatar.CustomAvatar.AllowHeightCalibration) return;
@@ -198,10 +199,61 @@ namespace CustomAvatar
 			}
 
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
+
+			if (gripRotDelta != 0.0f)
+			{
+				void rotateGrip(Transform handObject, float rotZ)
+				{
+					if (handObject == null) return;
+					var handTarget = handObject.GetChild(0);
+					if (handTarget == null) return;
+
+					handTarget.parent = null;
+					var eulerrot = handObject.localRotation.eulerAngles;
+					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, eulerrot.z + rotZ);
+					handTarget.parent = handObject;
+					Plugin.Log("Grip rotation: " + rotZ);
+				}
+				rotateGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), gripRotDelta);
+				rotateGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), -gripRotDelta);
+			}
+
 		}
 
 		private void FixAvatar()
 		{
+			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
+			if (animator != null && animator.avatar && animator.isHuman)
+			{
+				// only z axis alignment
+				void fixGrip(HumanBodyBones wristBoneName, HumanBodyBones elbowBoneName, Transform handObject, Vector3 baseArmDirection, float alignRotZ)
+				{
+					if (handObject == null) return;
+					var handTarget = handObject.GetChild(0);
+					if (handTarget == null) return;
+
+					var wrist = animator.GetBoneTransform(wristBoneName);
+					var elbow = animator.GetBoneTransform(elbowBoneName);
+
+					var rotationToBasePose = Quaternion.FromToRotation(wrist.position - elbow.position, baseArmDirection);
+					var rotationToHandObject = Quaternion.FromToRotation(handObject.position - wrist.position, wrist.position - elbow.position);
+					var baseRotZ = rotationToBasePose.eulerAngles.z;
+					var objectRotZ =  rotationToHandObject.eulerAngles.z;
+					baseRotZ -= (baseRotZ > 180.0f) ? 360.0f : 0;
+					objectRotZ -= (objectRotZ > 180.0f) ? 360.0f : 0;
+					handTarget.parent = null;
+					var eulerrot = handObject.localRotation.eulerAngles;
+					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, alignRotZ - baseRotZ - objectRotZ);
+					handTarget.parent = handObject;
+					Plugin.Log("Grip alignment: " + alignRotZ + " - " + baseRotZ + " - " + objectRotZ);
+				}
+
+				var rotZ = PlayerPrefs.GetFloat(PlayerGripAngleKey, 95.0f);
+				fixGrip(HumanBodyBones.RightHand, HumanBodyBones.RightLowerArm,
+					_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), new Vector3(1f, 0f, 0f), rotZ);
+				fixGrip(HumanBodyBones.LeftHand, HumanBodyBones.LeftLowerArm,
+					_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), new Vector3(-1f, 0f, 0f), -rotZ);
+			}
 			// inject late fixer
 			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverMender>();
 		}
@@ -222,6 +274,15 @@ namespace CustomAvatar
 			PlayerPrefs.SetFloat(PlayerArmLengthKey, v);
 			PlayerPrefs.Save();
 			ResizePlayerAvatar();
+		}
+
+		public void IncrementPlayerGripAngle(int step)
+		{
+			var v = PlayerPrefs.GetFloat(PlayerGripAngleKey, 95.0f);
+			v += 5.0f * step;
+			PlayerPrefs.SetFloat(PlayerGripAngleKey, v);
+			PlayerPrefs.Save();
+			ResizePlayerAvatar(5.0f * step);
 		}
 
 		private class FloorLevelMender : MonoBehaviour
