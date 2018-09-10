@@ -14,6 +14,12 @@ namespace CustomAvatar
 
 		public void Restart()
 		{
+			CancelInvoke("_Restart");
+			Invoke("_Restart", 0.5f);
+		}
+
+		private void _Restart()
+		{
 			OnDestroy();
 			Start();
 		}
