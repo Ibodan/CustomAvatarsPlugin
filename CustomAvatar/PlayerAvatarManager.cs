@@ -239,13 +239,14 @@ namespace CustomAvatar
 					var rotationToHandObject = Quaternion.FromToRotation(handObject.position - wrist.position, wrist.position - elbow.position);
 					var baseRotZ = rotationToBasePose.eulerAngles.z;
 					var objectRotZ =  rotationToHandObject.eulerAngles.z;
+					var targetDiffRotZ = wrist.rotation.eulerAngles.z - handTarget.rotation.eulerAngles.z;
 					baseRotZ -= (baseRotZ > 180.0f) ? 360.0f : 0;
 					objectRotZ -= (objectRotZ > 180.0f) ? 360.0f : 0;
 					handTarget.parent = null;
 					var eulerrot = handObject.localRotation.eulerAngles;
-					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, alignRotZ - baseRotZ - objectRotZ);
+					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, alignRotZ - baseRotZ - objectRotZ + targetDiffRotZ);
 					handTarget.parent = handObject;
-					Plugin.Log("Grip alignment: " + alignRotZ + " - " + baseRotZ + " - " + objectRotZ);
+					Plugin.Log("Grip alignment: " + alignRotZ + " - " + baseRotZ + " - " + objectRotZ + " + " + targetDiffRotZ);
 				}
 
 				var rotZ = PlayerPrefs.GetFloat(PlayerGripAngleKey, 95.0f);
