@@ -19,17 +19,13 @@ namespace AvatarScriptPack
 			}
 
 			_startLayers = Exclude.Select(x => x.layer).ToArray();
-
-			Plugin.Instance.FirstPersonEnabledChanged += OnFirstPersonEnabledChanged;
-			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
 
 		private void OnDisable()
 		{
-			Plugin.Instance.FirstPersonEnabledChanged -= OnFirstPersonEnabledChanged;
 		}
 
-		private void OnFirstPersonEnabledChanged(bool firstPersonEnabled)
+		public void OnFirstPersonEnabledChanged(bool firstPersonEnabled)
 		{
 			for (var i = 0; i < Exclude.Length; i++)
 			{
