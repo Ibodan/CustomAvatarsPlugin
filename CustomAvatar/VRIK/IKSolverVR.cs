@@ -282,7 +282,7 @@ namespace AvatarScriptPack
 			for (int i = 0; i < hand.childCount; i++)
 			{
 				float num2 = Vector3.SqrMagnitude(hand.GetChild(i).position - hand.position);
-				if (num2 < num)
+				if (num2 < num && num2 > 0.00001f)
 				{
 					num = num2;
 					index = i;
@@ -975,7 +975,7 @@ namespace AvatarScriptPack
 					vector2 = rotation * vector2;
 					vector2 = this.chestRotation * vector2;
 					vector2 += vector;
-					vector2 -= this.rotation * this.wristToPalmAxis;
+					vector2 -= this.rotation * this.wristToPalmAxis * 0.1f;
 					vector2 -= this.rotation * this.palmToThumbAxis * 0.5f;
 					if (this.bendGoalWeight > 0f)
 					{
