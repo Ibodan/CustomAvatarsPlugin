@@ -314,12 +314,6 @@ namespace CustomAvatar
 				if (vrik == null) return;
 				// force plant feet feature disabled and you can jump
 				vrik.solver.plantFeet = false;
-				// other paternalistic assignings
-				vrik.solver.spine.neckStiffness = 0f;
-				vrik.solver.spine.headClampWeight = 0.4f;
-				vrik.solver.spine.bodyPosStiffness = 0.3f;
-				vrik.solver.spine.bodyRotStiffness = 0f;
-				vrik.solver.spine.maintainPelvisPosition = 0f;
 				var animator = GetComponentInChildren<Animator>();
 				if (animator != null && animator.avatar && animator.isHuman)
 				{
