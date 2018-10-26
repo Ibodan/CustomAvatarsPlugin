@@ -974,9 +974,9 @@ namespace AvatarScriptPack
 					rotation = Quaternion.FromToRotation(fromDirection, toDirection);
 					vector2 = rotation * vector2;
 					vector2 = this.chestRotation * vector2;
-					vector2 += vector;
-					vector2 -= this.rotation * this.wristToPalmAxis * 0.1f;
-					vector2 -= this.rotation * this.palmToThumbAxis * 0.5f;
+					vector2 = Vector3.Slerp(vector2, vector, 0.5f);
+					Vector3 vectorHand = (this.rotation * this.wristToPalmAxis * 0.15f + this.rotation * this.palmToThumbAxis * 0.85f) * -1.0f;
+					vector2 = Vector3.Slerp(vector2, vectorHand, 0.1f);
 					if (this.bendGoalWeight > 0f)
 					{
 						vector2 = Vector3.Slerp(vector2, this.bendDirection, this.bendGoalWeight);
