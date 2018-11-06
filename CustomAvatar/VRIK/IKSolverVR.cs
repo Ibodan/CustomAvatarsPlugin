@@ -878,7 +878,7 @@ namespace AvatarScriptPack
 						num5 = 1f - Mathf.Abs(num5);
 						num4 *= num5;
 						num4 -= num3;
-						num4 = this.DamperValue(num4, -45f - num3, 45f - num3, 0.7f);
+						num4 = this.DamperValue(num4, isLeft ? -60 : 0, isLeft ? 0 : 60, 0.7f);
 						Vector3 fromDirection = this.shoulder.solverRotation * this.shoulder.axis;
 						Vector3 toDirection = quaternion2 * (Quaternion.AngleAxis(num4, Vector3.up) * Vector3.forward);
 						Quaternion rhs = Quaternion.FromToRotation(fromDirection, toDirection);
@@ -976,7 +976,8 @@ namespace AvatarScriptPack
 					vector2 = this.chestRotation * vector2;
 					vector2 = Vector3.Slerp(vector2, vector, 0.5f);
 					Vector3 vectorHand = (this.rotation * this.wristToPalmAxis * 0.15f + this.rotation * this.palmToThumbAxis * 0.85f) * -1.0f;
-					vector2 = Vector3.Slerp(vector2, vectorHand, 0.1f);
+					float handWeight = (Vector3.Dot(vector2, vectorHand) + 1.0f) * 0.5f * 0.75f; 
+					vector2 = Vector3.Slerp(vector2, vectorHand, handWeight);
 					if (this.bendGoalWeight > 0f)
 					{
 						vector2 = Vector3.Slerp(vector2, this.bendDirection, this.bendGoalWeight);
