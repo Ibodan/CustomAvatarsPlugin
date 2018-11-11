@@ -24,15 +24,8 @@ namespace CustomAvatar
 			return Mathf.Clamp(height, MinHeight, MaxHeight);
 		}
 
-		public static float? MeasureArmLength(GameObject avatarGameObject)
+		public static float? MeasureArmLength(Animator animator)
 		{
-			var animator = avatarGameObject.GetComponentInChildren<Animator>();
-			if (animator == null || animator.avatar == null || !animator.isHuman || !animator.enabled)
-			{
-				Plugin.Log("animator for human not found");
-				return null;
-			}
-
 			var leftShoulder = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
 			var rightShoulder = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position;
 			var leftElbow = animator.GetBoneTransform(HumanBodyBones.LeftLowerArm).position;

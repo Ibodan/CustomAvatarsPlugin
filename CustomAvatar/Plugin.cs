@@ -154,6 +154,22 @@ namespace CustomAvatar
 			{
 				PlayerAvatarManager.IncrementPlayerGripAngle(-1);
 			}
+			else if (Input.GetKeyDown(KeyCode.J))
+			{
+				PlayerAvatarManager.IncrementPlayerGripAngleY(1);
+			}
+			else if (Input.GetKeyDown(KeyCode.H))
+			{
+				PlayerAvatarManager.IncrementPlayerGripAngleY(-1);
+			}
+			else if (Input.GetKeyDown(KeyCode.L))
+			{
+				PlayerAvatarManager.IncrementPlayerGripOffsetZ(1);
+			}
+			else if (Input.GetKeyDown(KeyCode.K))
+			{
+				PlayerAvatarManager.IncrementPlayerGripOffsetZ(-1);
+			}
 		}
 
 		private IEnumerator SetCameraCullingMask()

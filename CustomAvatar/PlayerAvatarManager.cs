@@ -135,8 +135,9 @@ namespace CustomAvatar
 			_startAvatarPositionY = null;
 			_currentAvatarArmLength = null;
 			_prevPlayerHeight = -1;
-			FixAvatar();
 			ResizePlayerAvatar();
+			InitialFixAvatar();
+			GripFixPlayerAvatar();
 
 			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
@@ -161,26 +162,37 @@ namespace CustomAvatar
 		private const string PlayerArmLengthKey = "AvatarAutoFitting.PlayerArmLength";
 		private const string PlayerViewPointYKey = "AvatarAutoFitting.PlayerViewPointY";
 		private const string PlayerGripAngleKey = "AvatarAutoFitting.PlayerGripAngle";
+		private const string PlayerGripAngleYKey = "AvatarAutoFitting.PlayerGripAngleY";
+		private const string PlayerGripOffsetZKey = "AvatarAutoFitting.PlayerGripOffsetZ";
 		private float PlayerDefaultViewPointY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
 		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.92f;
 
-		private void ResizePlayerAvatar(float gripRotDelta = 0.0f)
+		private Animator FindAvatarAnimator()
+		{
+			var vrik = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<AvatarScriptPack.VRIK>();
+			if (vrik == null) return null;
+			var animator = vrik.gameObject.GetComponentInChildren<Animator>();
+			if (animator.avatar == null || !animator.isHuman) return null;
+			return animator;
+		}
+
+		private void ResizePlayerAvatar()
 		{
 			if (_currentSpawnedPlayerAvatar?.GameObject == null) return;
 			if (!_currentSpawnedPlayerAvatar.CustomAvatar.AllowHeightCalibration) return;
 
+			// also used as fbx root object
+			var animator = FindAvatarAnimator();
+			if (animator == null) { Plugin.Log("Animator of human not found"); return; }
+
 			float playerArmLength = PlayerPrefs.GetFloat(PlayerArmLengthKey, PlayerDefaultArmLength);
 			float playerViewPointY = PlayerPrefs.GetFloat(PlayerViewPointYKey, PlayerDefaultViewPointY);
 
-			_currentAvatarArmLength = _currentAvatarArmLength ?? AvatarMeasurement.MeasureArmLength(_currentSpawnedPlayerAvatar.GameObject);
+			_currentAvatarArmLength = _currentAvatarArmLength ?? AvatarMeasurement.MeasureArmLength(animator);
 			var avatarArmLength = _currentAvatarArmLength ?? playerArmLength;
 			Plugin.Log("Avatar Arm Length: " + avatarArmLength);
 
 			var avatarViewPointY = _currentSpawnedPlayerAvatar.CustomAvatar.ViewPoint?.position.y ?? playerViewPointY;
-
-			// fbx root gameobject
-			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
-			if (animator == null) { Plugin.Log("Animator not found"); return; }
 
 			// scale
 			var scale = playerArmLength / avatarArmLength;
@@ -202,64 +214,96 @@ namespace CustomAvatar
 			}
 
 			Plugin.Log("Avatar fitted with scale: " + scale + " yoffset: " + offset);
+		}
 
-			if (gripRotDelta != 0.0f)
+		private void GripFixPlayerAvatar()
+		{
+			var animator = FindAvatarAnimator();
+			if (animator != null && animator.avatar && animator.isHuman)
 			{
-				void rotateGrip(Transform handObject, float rotZ)
+				void fixGrip(HumanBodyBones indexFingerBoneName, Transform handObject, float gripAngleY, float gripAngleZ, float gripOffsetZ)
 				{
 					if (handObject == null) return;
 					var handTarget = handObject.GetChild(0);
 					if (handTarget == null) return;
 
-					handTarget.parent = null;
-					var eulerrot = handObject.localRotation.eulerAngles;
-					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, eulerrot.z + rotZ);
-					handTarget.parent = handObject;
-					Plugin.Log("Grip rotation: " + rotZ);
-				}
-				rotateGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), gripRotDelta);
-				rotateGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), -gripRotDelta);
-			}
+					var indexFinger = animator.GetBoneTransform(indexFingerBoneName);
 
+					var basePoint = indexFinger.Find("_baseGripPoint");
+					if (basePoint == null) return;
+
+					handTarget.parent = null;
+					handObject.rotation = Quaternion.AngleAxis(gripAngleY, basePoint.up) * basePoint.rotation;
+					handObject.rotation = Quaternion.AngleAxis(gripAngleZ, handObject.forward) * handObject.rotation;
+					handObject.position = basePoint.position + (handObject.forward * gripOffsetZ);
+					handTarget.parent = handObject;
+
+					Plugin.Log("Grip alignment applied. " + gripAngleY + "," + gripAngleZ + "," + gripOffsetZ);
+				}
+
+				var rotZ = PlayerPrefs.GetFloat(PlayerGripAngleKey, 80.0f);
+				var rotY = PlayerPrefs.GetFloat(PlayerGripAngleYKey, 15.0f);
+				var offsetZ = PlayerPrefs.GetFloat(PlayerGripOffsetZKey, 0.06f);
+
+				fixGrip(HumanBodyBones.RightIndexProximal, _currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), rotY, rotZ, offsetZ);
+				fixGrip(HumanBodyBones.LeftIndexProximal, _currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), rotY, rotZ, offsetZ);
+			}
 		}
 
-		private void FixAvatar()
+		private void InitialFixAvatar()
 		{
-			var animator = _currentSpawnedPlayerAvatar.GameObject.GetComponentInChildren<Animator>();
-			if (animator != null && animator.avatar && animator.isHuman)
+			var animator = FindAvatarAnimator();
+			if (animator != null)
 			{
-				// only z axis alignment
-				void fixGrip(HumanBodyBones wristBoneName, HumanBodyBones elbowBoneName, Transform handObject, Vector3 baseArmDirection, float alignRotZ)
+				Vector3 nearestPointOfLines(Vector3 mainPoint1, Vector3 mainPoint2, Vector3 subPoint1, Vector3 subPoint2)
+				{
+					Vector3 vMain = mainPoint2 - mainPoint1;
+					Vector3 vSub = subPoint2 - subPoint1;
+					Vector3 vMainNorm = vMain.normalized;
+					Vector3 vSubNorm = vSub.normalized;
+					float dot = Vector3.Dot(vMainNorm, vSubNorm);
+					if (dot == 1.0f) return mainPoint1; // parallel lines - avoid deviding by zero
+					Vector3 lineToLine = subPoint1 - mainPoint1;
+					float delta = (Vector3.Dot(lineToLine, vMainNorm) - dot * Vector3.Dot(lineToLine, vSubNorm)) / (1.0f - dot * dot);
+					return mainPoint1 + delta * vMainNorm;
+				}
+
+				void fixGrip(Transform handObject, HumanBodyBones wristBoneName, HumanBodyBones indexFingerBoneName, HumanBodyBones indexFinger2BoneName)
 				{
 					if (handObject == null) return;
 					var handTarget = handObject.GetChild(0);
 					if (handTarget == null) return;
 
 					var wrist = animator.GetBoneTransform(wristBoneName);
-					var elbow = animator.GetBoneTransform(elbowBoneName);
+					var indexFinger = animator.GetBoneTransform(indexFingerBoneName);
+					var indexFinger2 = animator.GetBoneTransform(indexFinger2BoneName);
 
-					var rotationToBasePose = Quaternion.FromToRotation(wrist.position - elbow.position, baseArmDirection);
-					var rotationToHandObject = Quaternion.FromToRotation(handObject.position - wrist.position, wrist.position - elbow.position);
-					var baseRotZ = rotationToBasePose.eulerAngles.z;
-					var objectRotZ =  rotationToHandObject.eulerAngles.z;
-					var targetDiffRotZ = wrist.rotation.eulerAngles.z - handTarget.rotation.eulerAngles.z;
-					baseRotZ -= (baseRotZ > 180.0f) ? 360.0f : 0;
-					objectRotZ -= (objectRotZ > 180.0f) ? 360.0f : 0;
-					handTarget.parent = null;
-					var eulerrot = handObject.localRotation.eulerAngles;
-					handObject.localRotation = Quaternion.Euler(eulerrot.x, eulerrot.y, alignRotZ - baseRotZ - objectRotZ + targetDiffRotZ);
+					var origParent = handObject.parent;
+					handTarget.parent = origParent;
+					handObject.parent = handTarget;
+					handTarget.rotation = wrist.rotation;
+					handTarget.position = wrist.position;
+					handObject.parent = origParent;
 					handTarget.parent = handObject;
-					Plugin.Log("Grip alignment: " + alignRotZ + " - " + baseRotZ + " - " + objectRotZ + " + " + targetDiffRotZ);
-				}
 
-				var rotZ = PlayerPrefs.GetFloat(PlayerGripAngleKey, 95.0f);
-				fixGrip(HumanBodyBones.RightHand, HumanBodyBones.RightLowerArm,
-					_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), new Vector3(1f, 0f, 0f), rotZ);
-				fixGrip(HumanBodyBones.LeftHand, HumanBodyBones.LeftLowerArm,
-					_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), new Vector3(-1f, 0f, 0f), -rotZ);
+					Transform baseGripPoint = indexFinger.Find("_baseGripPoint");
+					if (baseGripPoint == null)
+					{
+						baseGripPoint = new GameObject("_baseGripPoint").transform;
+						baseGripPoint.parent = indexFinger;
+					}
+					// nearest point of initial handObject vector for a line by index finger vector
+					baseGripPoint.position = nearestPointOfLines(handObject.position, handObject.position + handObject.forward, indexFinger.position, indexFinger2.position);
+					var handYAxis = Vector3.Cross(handObject.forward, handObject.position - wrist.position);
+					handYAxis.z = 0f;
+					baseGripPoint.rotation = Quaternion.LookRotation(Vector3.forward , handYAxis);
+				}
+				fixGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), HumanBodyBones.RightHand, HumanBodyBones.RightIndexProximal, HumanBodyBones.RightIndexIntermediate);
+				fixGrip(_currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), HumanBodyBones.LeftHand, HumanBodyBones.LeftIndexProximal, HumanBodyBones.LeftIndexIntermediate);
+
+				// inject late fixer
+				_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverMender>();
 			}
-			// inject late fixer
-			_currentSpawnedPlayerAvatar.GameObject.AddComponent<IKSolverMender>();
 		}
 
 		public void MeasurePlayerViewPoint()
@@ -282,11 +326,29 @@ namespace CustomAvatar
 
 		public void IncrementPlayerGripAngle(int step)
 		{
-			var v = PlayerPrefs.GetFloat(PlayerGripAngleKey, 95.0f);
+			var v = PlayerPrefs.GetFloat(PlayerGripAngleKey, 80.0f);
 			v += 5.0f * step;
 			PlayerPrefs.SetFloat(PlayerGripAngleKey, v);
 			PlayerPrefs.Save();
-			ResizePlayerAvatar(5.0f * step);
+			GripFixPlayerAvatar();
+		}
+
+		public void IncrementPlayerGripAngleY(int step)
+		{
+			var v = PlayerPrefs.GetFloat(PlayerGripAngleYKey, 15.0f);
+			v += 5.0f * step;
+			PlayerPrefs.SetFloat(PlayerGripAngleYKey, v);
+			PlayerPrefs.Save();
+			GripFixPlayerAvatar();
+		}
+
+		public void IncrementPlayerGripOffsetZ(int step)
+		{
+			var v = PlayerPrefs.GetFloat(PlayerGripOffsetZKey, 0.06f);
+			v += 0.01f * step;
+			PlayerPrefs.SetFloat(PlayerGripOffsetZKey, v);
+			PlayerPrefs.Save();
+			GripFixPlayerAvatar();
 		}
 
 		private class FloorLevelMender : MonoBehaviour
@@ -311,32 +373,35 @@ namespace CustomAvatar
 			private void LateFix()
 			{
 				var vrik = GetComponentInChildren<AvatarScriptPack.VRIK>();
-				if (vrik == null) return;
-				// force plant feet feature disabled and you can jump
-				vrik.solver.plantFeet = false;
-				var animator = GetComponentInChildren<Animator>();
-				if (animator != null && animator.avatar && animator.isHuman)
+				if (vrik != null)
 				{
-					// leg bending fix : insert a bend goal 
-					void fixLegBend(HumanBodyBones hipBoneName, HumanBodyBones legBoneName, AvatarScriptPack.IKSolverVR.Leg legSolver)
+					// force plant feet feature disabled and you can jump
+					vrik.solver.plantFeet = false;
+					var animator = vrik.gameObject.GetComponentInChildren<Animator>();
+					if (animator != null && animator.avatar != null && animator.isHuman)
 					{
-						var hip = animator.GetBoneTransform(hipBoneName);
-						var leg = animator.GetBoneTransform(legBoneName);
-						if (hip != null && leg != null)
+						// leg bending fix : insert a bend goal 
+						void fixLegBend(HumanBodyBones hipBoneName, HumanBodyBones legBoneName, AvatarScriptPack.IKSolverVR.Leg legSolver)
 						{
-							var bendGoal = new GameObject();
-							bendGoal.transform.SetParent(hip);
-							bendGoal.transform.localPosition = Vector3.forward + (leg.position - hip.position);
-							legSolver.bendGoal = bendGoal.transform;
-							legSolver.bendGoalWeight = 1.0f;
-							legSolver.swivelOffset = 0f;
+							var hip = animator.GetBoneTransform(hipBoneName);
+							var leg = animator.GetBoneTransform(legBoneName);
+							if (hip != null && leg != null)
+							{
+								var bendGoal = new GameObject();
+								bendGoal.transform.SetParent(hip);
+								bendGoal.transform.localPosition = Vector3.forward + (leg.position - hip.position);
+								legSolver.bendGoal = bendGoal.transform;
+								legSolver.bendGoalWeight = 1.0f;
+								legSolver.swivelOffset = 0f;
+							}
 						}
-					}
-					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.LeftUpperLeg, vrik.solver.leftLeg);
-					fixLegBend(HumanBodyBones.Hips, HumanBodyBones.RightUpperLeg, vrik.solver.rightLeg);
+						fixLegBend(HumanBodyBones.Hips, HumanBodyBones.LeftUpperLeg, vrik.solver.leftLeg);
+						fixLegBend(HumanBodyBones.Hips, HumanBodyBones.RightUpperLeg, vrik.solver.rightLeg);
 
-					Plugin.Log("Leg bending fix applied.");
+						Plugin.Log("Leg bending fix applied.");
+					}
 				}
+				Destroy(this);
 			}
 
 			private void Start()
