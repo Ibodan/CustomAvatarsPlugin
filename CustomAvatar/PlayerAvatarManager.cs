@@ -165,7 +165,7 @@ namespace CustomAvatar
 		private const string PlayerGripAngleYKey = "AvatarAutoFitting.PlayerGripAngleY";
 		private const string PlayerGripOffsetZKey = "AvatarAutoFitting.PlayerGripOffsetZ";
 		private float PlayerDefaultViewPointY = BeatSaberUtil.GetPlayerHeight() - 0.11f;
-		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.92f;
+		private float PlayerDefaultArmLength = BeatSaberUtil.GetPlayerHeight() * 0.88f;
 
 		private Animator FindAvatarAnimator()
 		{
