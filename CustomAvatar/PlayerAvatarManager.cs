@@ -246,7 +246,7 @@ namespace CustomAvatar
 				var offsetZ = PlayerPrefs.GetFloat(PlayerGripOffsetZKey, 0.06f);
 
 				fixGrip(HumanBodyBones.RightIndexProximal, _currentSpawnedPlayerAvatar.GameObject.transform.Find("RightHand"), rotY, rotZ, offsetZ);
-				fixGrip(HumanBodyBones.LeftIndexProximal, _currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), rotY, rotZ, offsetZ);
+				fixGrip(HumanBodyBones.LeftIndexProximal, _currentSpawnedPlayerAvatar.GameObject.transform.Find("LeftHand"), rotY, 180 - rotZ, offsetZ);
 			}
 		}
 
