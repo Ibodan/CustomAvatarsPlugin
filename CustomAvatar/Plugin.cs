@@ -17,9 +17,8 @@ namespace CustomAvatar
 		
 		private bool _init;
 		private bool _firstPersonEnabled;
-		
-		private WaitForSecondsRealtime _sceneLoadWait = new WaitForSecondsRealtime(0.1f);
-		
+		private Coroutine _coCullingMaskSetting = null;
+
 		public Plugin()
 		{
 			Instance = this;
@@ -110,7 +109,8 @@ namespace CustomAvatar
 
 		private void SceneManagerOnSceneLoaded(Scene newScene, LoadSceneMode mode)
 		{
-			SharedCoroutineStarter.instance.StartCoroutine(SetCameraCullingMask());
+			if (_coCullingMaskSetting != null) SharedCoroutineStarter.instance.StopCoroutine(_coCullingMaskSetting);
+			_coCullingMaskSetting = SharedCoroutineStarter.instance.StartCoroutine(SetCameraCullingMask());
 		}
 
 		private void PlayerAvatarManagerOnAvatarChanged(CustomAvatar newAvatar)
@@ -138,7 +138,7 @@ namespace CustomAvatar
 
 		private IEnumerator SetCameraCullingMask()
 		{
-			yield return _sceneLoadWait;
+			yield return new WaitForSecondsRealtime(0.5f);
 			var mainCamera = Camera.main;
 			if (mainCamera == null) yield break;
 			mainCamera.cullingMask &= ~(1 << AvatarLayers.OnlyInThirdPerson);
