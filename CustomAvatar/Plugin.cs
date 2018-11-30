@@ -17,7 +17,7 @@ namespace CustomAvatar
 		
 		private bool _init;
 		private bool _firstPersonEnabled;
-		private Coroutine _coCullingMaskSetting = null;
+		private GameScenesManager _gameScenesManager;
 
 		public Plugin()
 		{
@@ -88,8 +88,10 @@ namespace CustomAvatar
 		{
 			SceneManager.sceneLoaded -= SceneManagerOnSceneLoaded;
 
-			if (PlayerAvatarManager == null) return;
-			PlayerAvatarManager.AvatarChanged -= PlayerAvatarManagerOnAvatarChanged;
+			if (PlayerAvatarManager != null)
+				PlayerAvatarManager.AvatarChanged -= PlayerAvatarManagerOnAvatarChanged;
+			if (_gameScenesManager != null)
+				_gameScenesManager.transitionDidFinishEvent -= SetCameraCullingMask;
 		}
 
 		private void AvatarsLoaded(IReadOnlyList<CustomAvatar> loadedAvatars)
@@ -109,8 +111,12 @@ namespace CustomAvatar
 
 		private void SceneManagerOnSceneLoaded(Scene newScene, LoadSceneMode mode)
 		{
-			if (_coCullingMaskSetting != null) SharedCoroutineStarter.instance.StopCoroutine(_coCullingMaskSetting);
-			_coCullingMaskSetting = SharedCoroutineStarter.instance.StartCoroutine(SetCameraCullingMask());
+			if (_gameScenesManager == null)
+			{
+				_gameScenesManager = Resources.FindObjectsOfTypeAll<GameScenesManager>().FirstOrDefault();
+				if (_gameScenesManager != null)
+					_gameScenesManager.transitionDidFinishEvent += SetCameraCullingMask;
+			}
 		}
 
 		private void PlayerAvatarManagerOnAvatarChanged(CustomAvatar newAvatar)
@@ -136,11 +142,10 @@ namespace CustomAvatar
 			}
 		}
 
-		private IEnumerator SetCameraCullingMask()
+		private void SetCameraCullingMask()
 		{
-			yield return new WaitForSecondsRealtime(0.5f);
 			var mainCamera = Camera.main;
-			if (mainCamera == null) yield break;
+			if (mainCamera == null) return;
 			mainCamera.cullingMask &= ~(1 << AvatarLayers.OnlyInThirdPerson);
 			mainCamera.cullingMask |= 1 << AvatarLayers.OnlyInFirstPerson;
 		}
