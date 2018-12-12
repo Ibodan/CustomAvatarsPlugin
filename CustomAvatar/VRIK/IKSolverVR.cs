@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System;
 using AvatarScriptPack;
@@ -415,7 +415,11 @@ namespace AvatarScriptPack {
 				leg.ApplyOffsets();
 			}
 
+#if PLUGIN
+			if (true) {
+#else
 			if (!plantFeet) {
+#endif
 				spine.InverseTranslateToHead(legs, false, false, bodyOffset, 1f);
 
 				foreach (Leg leg in legs) leg.TranslateRoot(spine.pelvis.solverPosition, spine.pelvis.solverRotation);
