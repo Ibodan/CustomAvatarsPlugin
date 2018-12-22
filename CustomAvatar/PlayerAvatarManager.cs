@@ -130,6 +130,7 @@ namespace CustomAvatar
 
 			_avatarTailor.OnAvatarLoaded(_currentSpawnedPlayerAvatar);
 			ResizePlayerAvatar();
+			_avatarTailor.PrepareGripFitting(_currentSpawnedPlayerAvatar.GameObject);
 			GripFittingPlayerAvatar();
 			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}

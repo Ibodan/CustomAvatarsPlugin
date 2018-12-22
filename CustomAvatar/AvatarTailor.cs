@@ -63,8 +63,6 @@ namespace CustomAvatar
 			_initialAvatarLocalScale = avatar.GameObject.transform.localScale;
 			_initialAvatarPositionY = null;
 			_currentAvatarArmLength = null;
-
-			PrepareGripFitting(avatar.GameObject);
 		}
 
 		public void ResizeAvatar(SpawnedAvatar avatar)
@@ -157,7 +155,7 @@ namespace CustomAvatar
 			fixGrip(HumanBodyBones.LeftIndexProximal, avatarGameObject.transform.Find("LeftHand"), rotY, 180 - rotZ, offsetZ);
 		}
 
-		private void PrepareGripFitting(GameObject avatarGameObject)
+		public void PrepareGripFitting(GameObject avatarGameObject)
 		{
 			var animator = FindAvatarAnimator(avatarGameObject);
 			if (animator == null) return;
