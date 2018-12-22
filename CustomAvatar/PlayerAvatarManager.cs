@@ -130,6 +130,7 @@ namespace CustomAvatar
 
 			_avatarTailor.OnAvatarLoaded(_currentSpawnedPlayerAvatar);
 			ResizePlayerAvatar();
+			GripFittingPlayerAvatar();
 			OnFirstPersonEnabledChanged(Plugin.Instance.FirstPersonEnabled);
 		}
 
@@ -165,5 +166,28 @@ namespace CustomAvatar
 
 			_avatarTailor.ResizeAvatar(_currentSpawnedPlayerAvatar);
 		}
+
+		public void GripFittingPlayerAvatar()
+		{
+			if (_currentSpawnedPlayerAvatar?.GameObject == null) return;
+
+			_avatarTailor.GripFittingPlayerAvatar(_currentSpawnedPlayerAvatar.GameObject);
+		}
+
+		public void IncrementPlayerGripAngle(int step)
+		{
+			_avatarTailor.IncrementPlayerGripAngle(step, _currentSpawnedPlayerAvatar.GameObject);
+		}
+
+		public void IncrementPlayerGripAngleY(int step)
+		{
+			_avatarTailor.IncrementPlayerGripAngleY(step, _currentSpawnedPlayerAvatar.GameObject);
+		}
+
+		public void IncrementPlayerGripOffsetZ(int step)
+		{
+			_avatarTailor.IncrementPlayerGripOffsetZ(step, _currentSpawnedPlayerAvatar.GameObject);
+		}
+
 	}
 }
