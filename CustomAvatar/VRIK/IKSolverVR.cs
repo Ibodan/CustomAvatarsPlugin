@@ -245,7 +245,7 @@ namespace AvatarScriptPack {
 
 			for (int i = 0; i < hand.childCount; i++) {
 				float sqrMag = Vector3.SqrMagnitude(hand.GetChild(i).position -hand.position);
-				if (sqrMag < closestSqrMag) {
+				if (sqrMag < closestSqrMag && sqrMag > 0.00001f) {
 					closestSqrMag = sqrMag;
 					thumbIndex = i;
 				}
