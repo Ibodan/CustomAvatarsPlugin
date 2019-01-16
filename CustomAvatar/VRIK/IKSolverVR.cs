@@ -50,7 +50,7 @@ namespace AvatarScriptPack {
 			}
 			
 			if (leftArm.palmToThumbAxis == Vector3.zero || !onlyIfZero) {
-				leftArm.palmToThumbAxis = GuessPalmToThumbAxis(references.leftHand, references.leftForearm);
+				leftArm.palmToThumbAxis = GuessPalmToThumbAxis(references.leftHand, references.leftForearm, leftArm.wristToPalmAxis);
 			}
 			
 			if (rightArm.wristToPalmAxis == Vector3.zero || !onlyIfZero) {
@@ -58,7 +58,7 @@ namespace AvatarScriptPack {
 			}
 			
 			if (rightArm.palmToThumbAxis == Vector3.zero || !onlyIfZero) {
-				rightArm.palmToThumbAxis = GuessPalmToThumbAxis(references.rightHand, references.rightForearm);
+				rightArm.palmToThumbAxis = GuessPalmToThumbAxis(references.rightHand, references.rightForearm, rightArm.wristToPalmAxis);
 			}
 		}
 
@@ -234,7 +234,7 @@ namespace AvatarScriptPack {
 			return axis;
 		}
 
-		private Vector3 GuessPalmToThumbAxis(Transform hand, Transform forearm) {
+		private Vector3 GuessPalmToThumbAxis(Transform hand, Transform forearm, Vector3 wristToPalmAxis) {
 			if (hand.childCount == 0) {
 				Debug.LogWarning("Hand " + hand.name + " does not have any fingers, VRIK can not guess the hand bone's orientation. Please assign 'Wrist To Palm Axis' and 'Palm To Thumb Axis' manually for both arms in VRIK settings.", hand);
 				return Vector3.zero;
@@ -251,9 +251,10 @@ namespace AvatarScriptPack {
 				}
 			}
 
-			Vector3 handNormal = Vector3.Cross(hand.position - forearm.position, hand.GetChild(thumbIndex).position - hand.position);
-			Vector3 toThumb = Vector3.Cross(handNormal, hand.position -forearm.position);
-			Vector3 axis = AxisTools.ToVector3(AxisTools.GetAxisToDirection(hand, toThumb));
+			Vector3 wristToPalm = hand.rotation * wristToPalmAxis;
+			Vector3 handNormal = Vector3.Cross(wristToPalm, (hand.GetChild(thumbIndex).position - hand.position).normalized).normalized;
+			Vector3 toThumb = Vector3.Cross(handNormal, wristToPalm).normalized;
+			Vector3 axis = Quaternion.Inverse(hand.rotation) * toThumb;
 			if (Vector3.Dot(toThumb, hand.rotation * axis) < 0f) axis = -axis;
 			return axis;
 		}

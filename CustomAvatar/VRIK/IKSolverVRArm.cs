@@ -416,7 +416,7 @@ namespace AvatarScriptPack {
 				b = chestRotation * b;
 
 				b = Vector3.Slerp(b, armDir, 0.5f);
-				Vector3 vectorHand = (q * wristToPalmAxis * 0.15f + q * palmToThumbAxis * 0.85f) * -1.0f;
+				Vector3 vectorHand = q * Vector3.Slerp(wristToPalmAxis, palmToThumbAxis, 0.85f) * -1.0f;
 				float handWeight = (Vector3.Dot(b, vectorHand) + 1.0f) * 0.5f * 0.75f; // to range of 0 - 0.75
 				b = Vector3.Slerp(b, vectorHand, handWeight);
 
