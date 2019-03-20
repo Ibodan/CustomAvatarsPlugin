@@ -6,6 +6,7 @@ using System.Linq;
 using IllusionPlugin;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.XR;
 
 namespace CustomAvatar
 {
@@ -22,6 +23,62 @@ namespace CustomAvatar
 
 		private WaitForSecondsRealtime _sceneLoadWait = new WaitForSecondsRealtime(0.1f);
 		private GameScenesManager _scenesManager;
+		private static bool _isTrackerAsHand;
+
+		public static List<XRNodeState> Trackers = new List<XRNodeState>();
+		public static bool IsTrackerAsHand
+		{
+			get { return _isTrackerAsHand; }
+			set
+			{
+				_isTrackerAsHand = value;
+				List<XRNodeState> notes = new List<XRNodeState>();
+				Trackers = new List<XRNodeState>();
+				InputTracking.GetNodeStates(notes);
+				foreach (XRNodeState note in notes)
+				{
+					if (note.nodeType != XRNode.HardwareTracker || !InputTracking.GetNodeName(note.uniqueID).Contains("LHR-"))
+						continue;
+					Trackers.Add(note);
+				}
+				if (Trackers.Count == 0)
+					_isTrackerAsHand = false;
+				Console.WriteLine("IsTrackerAsHand : " + IsTrackerAsHand);
+			}
+		}
+
+		public static bool IsFullBodyTracking
+		{
+			get { return Plugin.FullBodyTrackingType != Plugin.TrackingType.None; ; }
+			set
+			{
+				List<XRNodeState> notes = new List<XRNodeState>();
+				Trackers = new List<XRNodeState>();
+				InputTracking.GetNodeStates(notes);
+				foreach (XRNodeState note in notes)
+				{
+					if (note.nodeType != XRNode.HardwareTracker || !InputTracking.GetNodeName(note.uniqueID).Contains("LHR-"))
+						continue;
+					Trackers.Add(note);
+				}
+				if (Trackers.Count >= 0 && Trackers.Count <= 3)
+					Plugin.FullBodyTrackingType = (Plugin.TrackingType)Plugin.Trackers.Count;
+				else
+					Plugin.FullBodyTrackingType = Plugin.TrackingType.None;
+				var currentAvatar = Instance.PlayerAvatarManager.GetSpawnedAvatar();
+				if (currentAvatar != null)
+				{
+					var _IKManagerAdvanced = currentAvatar.GameObject.GetComponentInChildren<AvatarScriptPack.IKManagerAdvanced>(true);
+					if (_IKManagerAdvanced != null)
+					{
+						_IKManagerAdvanced.CheckFullBodyTracking();
+					}
+				}
+				bool isFullBodyTracking = Plugin.IsFullBodyTracking;
+				Console.WriteLine(string.Concat("IsFullBodyTracking : ", isFullBodyTracking.ToString()));
+				Console.WriteLine(string.Concat("FullBodyTrackingType: ", FullBodyTrackingType.ToString()));
+			}
+		}
 		
 		public Plugin()
 		{
@@ -60,6 +117,20 @@ namespace CustomAvatar
 			}
 		}
 
+		public enum TrackingType
+		{
+			None,
+			Hips,
+			Feet,
+			Full
+		}
+
+		public static Plugin.TrackingType FullBodyTrackingType
+		{
+			get;
+			set;
+		}
+
 		public bool RotatePreviewEnabled
 		{
 			get { return AvatarPreviewRotation.rotatePreview; }
@@ -87,7 +158,7 @@ namespace CustomAvatar
 
 		public string Version
 		{
-			get { return "4.4.2"; }
+			get { return "4.6.0"; }
 		}
 
 		public static void Log(object message)
@@ -143,6 +214,7 @@ namespace CustomAvatar
 			
 			PlayerAvatarManager = new PlayerAvatarManager(AvatarLoader, AvatarTailor, previousAvatar);
 			PlayerAvatarManager.AvatarChanged += PlayerAvatarManagerOnAvatarChanged;
+			IsFullBodyTracking = true;
 		}
 
 		private void SceneManagerOnSceneLoaded(Scene newScene, LoadSceneMode mode)
@@ -159,7 +231,11 @@ namespace CustomAvatar
 		private void SceneTransitionDidFinish()
 		{
 			Camera mainCamera = Camera.main;
-			SetCameraCullingMask(mainCamera);
+
+			if (mainCamera)
+			{
+				SetCameraCullingMask(mainCamera);
+			}
 			
 			PlayerAvatarManager?.OnSceneTransitioned(SceneManager.GetActiveScene());
 		}
@@ -167,6 +243,7 @@ namespace CustomAvatar
 		private void PlayerAvatarManagerOnAvatarChanged(CustomAvatar newAvatar)
 		{
 			PlayerPrefs.SetString(PreviousAvatarKey, newAvatar.FullPath);
+			IsFullBodyTracking = IsFullBodyTracking;
 		}
 
 		public void OnUpdate()
@@ -206,6 +283,14 @@ namespace CustomAvatar
 			else if (Input.GetKeyDown(KeyCode.K))
 			{
 				PlayerAvatarManager.IncrementPlayerGripOffsetZ(-1);
+			}
+			else if (Input.GetKeyDown(KeyCode.F6))
+			{
+				IsTrackerAsHand = !IsTrackerAsHand;
+			}
+			else if (Input.GetKeyDown(KeyCode.F5))
+			{
+				IsFullBodyTracking = !IsFullBodyTracking;
 			}
 		}
 

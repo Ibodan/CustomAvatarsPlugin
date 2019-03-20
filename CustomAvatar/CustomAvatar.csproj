@@ -51,31 +51,27 @@
     <DefineConstants>PLUGIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+    <Reference Include="Assembly-CSharp" />
+    <Reference Include="BeatSaberCustomUI, Version=1.3.9.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>E:\Steam7\steamapps\common\Beat Saber\Plugins\BeatSaberCustomUI.dll</HintPath>
     </Reference>
-    <Reference Include="BeatSaberCustomUI">
-    </Reference>
-    <Reference Include="IllusionPlugin, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-    </Reference>
+    <Reference Include="IllusionPlugin" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="TextMeshPro-1.0.55.2017.1.0b12, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.AssetBundleModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.ParticleSystemModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.PhysicsModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.UI, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-    </Reference>
-    <Reference Include="UnityEngine.VRModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
-    <Reference Include="UnityEngine.XRModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
+    <Reference Include="Unity.TextMeshPro" />
+    <Reference Include="UnityEngine" />
+    <Reference Include="UnityEngine.AnimationModule" />
+    <Reference Include="UnityEngine.AssetBundleModule" />
+    <Reference Include="UnityEngine.AudioModule" />
+    <Reference Include="UnityEngine.CoreModule" />
+    <Reference Include="UnityEngine.ParticleSystemModule" />
+    <Reference Include="UnityEngine.PhysicsModule" />
+    <Reference Include="UnityEngine.UI" />
+    <Reference Include="UnityEngine.VRModule" />
+    <Reference Include="UnityEngine.XRModule" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AvatarBehaviour.cs" />
@@ -93,6 +89,7 @@
     <Compile Include="AvatarLoadResult.cs" />
     <Compile Include="EventFilterBehaviour.cs" />
     <Compile Include="EventFilters.cs" />
+    <Compile Include="IAvatarFullBodyInput.cs" />
     <Compile Include="PlayerAvatarManager.cs" />
     <Compile Include="AvatarSpawner.cs" />
     <Compile Include="EventManager.cs" />
@@ -103,6 +100,7 @@
     <Compile Include="PosRot.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SpawnedAvatar.cs" />
+    <Compile Include="UI\AvatarCellInfo.cs" />
     <Compile Include="UI\AvatarListViewController.cs" />
     <Compile Include="UI\AvatarSettingsViewController.cs" />
     <Compile Include="UI\AvatarPreviewController.cs" />
